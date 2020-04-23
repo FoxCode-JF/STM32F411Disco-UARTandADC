@@ -13,13 +13,14 @@ STM_DIR= /home/fox/ARM/STM32F4-Discovery_FW_V1.1.0
 
 # This is where the source files are located,
 # which are not in the current directory
-# (the sources of the standard peripheral library, which we use)
 # see also "info:/make/Selective Search" in Konqueror
-STM_SRC = $(STM_DIR)/Libraries/STM32F4xx_StdPeriph_Driver/src
+# 
+# If using StdPeriph uncomment:
+#STM_SRC = $(STM_DIR)/Libraries/STM32F4xx_StdPeriph_Driver/src
 
 # This is where private libraries are stored
 # Change this for your local library path
-CUSTOM_SRC = /home/fox/ARM/Projects/Utility_functions
+CUSTOM_SRC = /home/fox/ARM/Projects/Utility_functions/Sources
 
 # Tell make to look in that folder if it cannot find a source
 # in the current directory
@@ -36,9 +37,15 @@ SRCS  += system_stm32f4xx.c
 
 # These source files implement the functions we use.
 # make finds them by searching the vpath defined above.
-SRCS  += stm32f4xx_rcc.c 
-SRCS  += stm32f4xx_gpio.c
+# 
+# uncomment if necessary
+#SRCS  += stm32f4xx_rcc.c 
+#SRCS  += stm32f4xx_gpio.c
 SRCS  += stm32f4xx_user_utils.c
+SRCS  += stm32f411_gpio_drivers.c
+#SRCS  += syscalls.c
+
+#syscalls borrowed from STM32Cube example project
 
 # Startup file written by ST
 # The assembly code in this file is the first one to be
@@ -50,7 +57,7 @@ INC_DIRS  = $(STM_DIR)/Utilities/STM32F4-Discovery
 INC_DIRS += $(STM_DIR)/Libraries/CMSIS/Include
 INC_DIRS += $(STM_DIR)/Libraries/CMSIS/ST/STM32F4xx/Include
 INC_DIRS += $(STM_DIR)/Libraries/STM32F4xx_StdPeriph_Driver/inc
-INC_DIRS += /home/fox/ARM/Projects/Utility_functions
+INC_DIRS += /home/fox/ARM/Projects/Utility_functions/Include
 INC_DIRS += .
 
 # in case we have to many sources and don't want 
