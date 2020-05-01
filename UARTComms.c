@@ -28,6 +28,7 @@ int main(void)
 
 	GPIO_Init(GPIOA, ENABLE);
 	GPIO_Init(GPIOD, ENABLE);
+	GPIO_Init(GPIOB, ENABLE);
 	__DSB();
 
 	GPIO_PinCfg(GPIOD, PD12, gpio_mode_output_PP_LS);
@@ -37,11 +38,13 @@ int main(void)
 
 
 	GPIO_PinCfg(GPIOA, PA0, gpio_mode_in_floating);
-	GPIO_PinCfg(GPIOA, PA9, gpio_mode_AF9_PP_LS);
-	GPIO_PinCfg(GPIOA, PA10, gpio_mode_AF10_PP_LS);
+/*	GPIO_PinCfg(GPIOA, PA9, gpio_mode_AF7_PP_LS);
+	GPIO_PinCfg(GPIOA, PA10, gpio_mode_AF7_PP_LS);*/
+	GPIO_PinCfg(GPIOB, PB6, gpio_mode_AF7_PP_LS);
+	GPIO_PinCfg(GPIOB, PB7, gpio_mode_AF7_PP_LS);
 
-	GPIOA->AFR[1] 	= AF_USART1_RX_PA10 |
-					  AF_USART1_TX_PA9;
+/*	GPIOA->AFR[1] 	= AF_USART1_RX_PA10 |
+					  AF_USART1_TX_PA9;*/
 
 	SysTick_Config(16000);
 				  
@@ -56,18 +59,14 @@ int main(void)
 	EXTI->FTSR 			= EXTI_FTSR_TR0;
 
 	DMA2->HIFCR			= DMA_HIFCR_CTCIF7 | DMA_HIFCR_CTCIF5;
-	SYSCFG->EXTICR[0] |= SYSCFG_EXTICR1_EXTI0_PA;
+	SYSCFG->EXTICR[0] 	|= SYSCFG_EXTICR1_EXTI0_PA;
 	
 	delay_ms(100);
 
 	NVIC_EnableIRQ(EXTI0_IRQn);
 	//NVIC_EnableIRQ(USART1_IRQn);
 	NVIC_EnableIRQ(DMA2_Stream5_IRQn);
-	//NVIC_EnableIRQ(DMA2_Stream7_IRQn);
-
-
-
-
+	NVIC_EnableIRQ(DMA2_Stream7_IRQn);
 	//memset(buffer,'\0',strlen(buffer));
 
 	while(1)
@@ -100,14 +99,8 @@ void DMA2_Stream5_IRQHandler(void)
 {
 	if(DMA2->HISR & DMA_HISR_TCIF5)
 	{
-		/*termination of RX service code begin*/
-
-		/*termination of RX service code end*/
 		DMA2->HIFCR = DMA_HIFCR_CTCIF5;
-
 		BB(GPIOD->ODR, PD13) ^= 1;
-
-
 		while(!(USART1->SR & USART_SR_TC));
 
 		memcpy(&command[commandIT++], buffer, 1);
@@ -119,15 +112,32 @@ void DMA2_Stream5_IRQHandler(void)
 	}
 }
 
-void DMA2_Stream7_IRQHandler
+void DMA2_Stream7_IRQHandler(void)
+{
+	if(DMA2->HISR & DMA_HISR_TCIF7)
+	{
+		DMA2->HIFCR = DMA_HIFCR_CTCIF7;
+
+		BB(GPIOD->ODR, PD12) = 1;
+
+		while(!(USART1->SR & USART_SR_TC));
+		
+		if((DMA2_Stream7->CR & DMA_SxCR_EN) == 0 && (DMA2->HISR & DMA_HISR_TCIF7) == 0)
+		{
+			DMA2_Stream7->CR |= DMA_SxCR_EN;
+		}
+	}
+}
 
 void EXTI0_IRQHandler(void)
 {
 	if(EXTI->PR & EXTI_PR_PR0)
 	{
 		EXTI->PR = EXTI_PR_PR0;
+		DMA2_Stream7->CR |= DMA_SxCR_EN;
 		commandReset(command);
 		BB(GPIOD->ODR, PD14) ^= 1;
+		//strcpy(buffer, "RESET");
 	}
 }
 
@@ -135,7 +145,6 @@ void SysTick_Handler(void)
 {
 	ms_count++;
 }
-
 
 void commandReset(char* cmd)
 {
@@ -200,7 +209,7 @@ void usartSetup(void)
 	USART1->BRR 	= 0x683;
 
 	/*Enable Direct Memory Access*/
-	USART1->CR3 	= /*USART_CR3_DMAT |*/ USART_CR3_DMAR;
+	USART1->CR3 	= USART_CR3_DMAT | USART_CR3_DMAR;
 
 	USART1->CR1 	|= USART_ENABLE;
 
@@ -208,15 +217,16 @@ void usartSetup(void)
 
 	/*Transmission stream config (USART1_TX)
 	 *
-	 *	DMA1, Channel 4, Stream 7
+	 *	DMA2, Channel 4, Stream 7
 	 */
 	
-/*	DMA2_Stream7->CR 	= DMA_SxCR_CHSEL_2 	| 	// select channel 4
+	DMA2_Stream7->CR 	= DMA_SxCR_CHSEL_2 	| 	// select channel 4
 						  DMA_SxCR_PL_1		| 	// Priority level medium
-						  DMA_SxCR_MINC 	| 	// Memory increment mode
+						  //DMA_SxCR_MINC 	| 	// Memory increment mode
+						  DMA_SxCR_DIR_0 	|
 						  DMA_SxCR_TCIE 	; 	// Transfer Complete Interrupt Enable
 
-	DMA2_Stream7->PAR 	= (uint32_t)&USART1->DR;*/
+	DMA2_Stream7->PAR 	= (uint32_t)&USART1->DR;
 
 	/*Receiving stream config (USART1_RX)*/
 	/*
@@ -234,4 +244,9 @@ void usartSetup(void)
 	DMA2_Stream5->M0AR		= 	(uint32_t)buffer;
 	DMA2_Stream5->NDTR		|= 	1;	
 	DMA2_Stream5->CR 		|=	DMA_SxCR_EN;
+
+	uint32_t buffsize 		= strlen(buffer);
+	DMA2_Stream7->M0AR		= 	(uint32_t)buffer;
+	DMA2_Stream7->NDTR		|= 	1;	
+	DMA2_Stream7->CR 		|=	DMA_SxCR_EN;
 }
