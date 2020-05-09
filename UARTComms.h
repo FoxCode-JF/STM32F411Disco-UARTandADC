@@ -1,3 +1,9 @@
+#define DECIMAL_DIGITS_NUM_12b 4 //ADC register can have maximum of 4 digits 2^13 - 1 = 8191
+
+#define MAX_CMD_SIZE 		50
+#define UART_BUFFER_SIZE 	200
+#define DMA_TX_BUFFER_SIZE 	32
+
 #define RX_INIT 			true
 #define TX_INIT 			false
 
@@ -25,4 +31,10 @@
 #define USART_FLOWCONTROL_RTS	USART_CR3_RTSE
 #define USART_FLOWCONTROL_CTS	USART_CR3_CTSE
 
-void Tx_Rx_Init(char* buff, bool txrx);
+void joystickADCSetup(void);
+void uartDMASetup(void);
+
+void delay_ms(uint32_t time);
+void commandReset(char* cmd);
+void UART_sendMessage(const char* msg, uint8_t msgLen);
+char* intToStr(uint16_t number);
