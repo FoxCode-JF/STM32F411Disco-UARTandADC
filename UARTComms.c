@@ -25,7 +25,6 @@ const char welcomeMsg[48] = "Welcome to Fox UART communication test program\n";
 volatile uint32_t commandIT = 0;
 static uint32_t ms_count = 0; //  variable used by function delay_ms(uint32_t time)
 volatile uint16_t txMessageCalcLen =0;
-
 volatile uint16_t joyAxisRead[2] = {0, 0};
 
 bool isXChannelRead = false, isYChannelRead = false;
@@ -232,29 +231,6 @@ void UART_sendMessage(const char* msg, uint8_t msgLen)
 	DMA2_Stream7->CR |=	DMA_SxCR_EN;
 }
 
-void intToStr(uint16_t number, char* container, size_t strSize)
-{
-	int  tmp = number;
-
-	for (int i = strSize - 1; i < strSize; --i)
-	{
-		container[i] = tmp % 10 + '0';
-		tmp /= 10;
-	}
-}
-
-void delay_ms(uint32_t time)
-{	
-	ms_count = 0;
-
-	while(ms_count != time);
-
-	if(ms_count == time)
-	{
-		ms_count = 0;
-	}
-}
-
 void uartDMASetup(void)
 {
 	/******************Configure Clocks******************/
@@ -378,5 +354,5 @@ void joystickADCSetup(void)
 	ADC1->SMPR1 	|= ADC_SMPR1_SMP10 | ADC_SMPR1_SMP11; // choosing sampling rate
 	ADC1->CR2 		|= ADC_CR2_ADON | ADC_CR2_CONT;	// Continous measurement;	// A/D converter on
 	
-	delay_ms(1000);
+	delay_ms(100);
 }

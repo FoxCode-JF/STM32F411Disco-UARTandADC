@@ -9,7 +9,8 @@ PROJ_NAME=UARTComms
 # This is the directory containing the firmware package,
 # the unzipped folder downloaded from here:
 # http://www.st.com/web/en/catalog/tools/PF257904
-STM_DIR= /home/fox/ARM/STM32F4-Discovery_FW_V1.1.0
+STM_DIR = /home/fox/ARM/STM32F4-Discovery_FW_V1.1.0
+PROJ_DIR = /home/fox/ARM/Projects
 
 # This is where the source files are located,
 # which are not in the current directory
@@ -20,7 +21,7 @@ STM_DIR= /home/fox/ARM/STM32F4-Discovery_FW_V1.1.0
 
 # This is where private libraries are stored
 # Change this for your local library path
-CUSTOM_SRC = /home/fox/ARM/Projects/Utility_functions/Sources
+CUSTOM_SRC = $(PROJ_DIR)/STM32DiscoveryF411/UART_comms/Utility_functions/Sources
 
 # Tell make to look in that folder if it cannot find a source
 # in the current directory
@@ -41,8 +42,8 @@ SRCS  += system_stm32f4xx.c
 # uncomment if necessary
 #SRCS  += stm32f4xx_rcc.c 
 #SRCS  += stm32f4xx_gpio.c
-SRCS  += stm32f4xx_user_utils.c
 SRCS  += stm32f411_gpio_drivers.c
+SRCS  += stm32f4xx_user_utils.c
 #SRCS  += syscalls.c
 
 #syscalls borrowed from STM32Cube example project
@@ -56,8 +57,8 @@ SRCS += $(STM_DIR)/Libraries/CMSIS/ST/STM32F4xx/Source/Templates/TrueSTUDIO/star
 INC_DIRS  = $(STM_DIR)/Utilities/STM32F4-Discovery
 INC_DIRS += $(STM_DIR)/Libraries/CMSIS/Include
 INC_DIRS += $(STM_DIR)/Libraries/CMSIS/ST/STM32F4xx/Include
-INC_DIRS += $(STM_DIR)/Libraries/STM32F4xx_StdPeriph_Driver/inc
-INC_DIRS += /home/fox/ARM/Projects/Utility_functions/Include
+#INC_DIRS += $(STM_DIR)/Libraries/STM32F4xx_StdPeriph_Driver/inc
+INC_DIRS += $(PROJ_DIR)/STM32DiscoveryF411/UART_comms/Utility_functions/Include
 INC_DIRS += .
 
 # in case we have to many sources and don't want 
@@ -84,7 +85,7 @@ GDB     = $(TOOLS_DIR)/arm-none-eabi-gdb
 INCLUDE = $(addprefix -I,$(INC_DIRS))
 
 # #defines needed when working with the STM library
-DEFS    = -DUSE_STDPERIPH_DRIVER
+# DEFS    = -DUSE_STDPERIPH_DRIVER
 # if you use the following option, you must implement the function 
 #    assert_failed(uint8_t* file, uint32_t line)
 # because it is conditionally used in the library

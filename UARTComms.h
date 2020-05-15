@@ -35,8 +35,6 @@
 
 void joystickADCSetup(void);
 void uartDMASetup(void);
-
-void delay_ms(uint32_t time);
 void commandReset(char* cmd);
 void UART_sendMessage(const char* msg, uint8_t msgLen);
-void intToStr(uint16_t number, char* container, size_t strSize);
+
