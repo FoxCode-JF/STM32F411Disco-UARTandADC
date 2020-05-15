@@ -31,10 +31,12 @@
 #define USART_FLOWCONTROL_RTS	USART_CR3_RTSE
 #define USART_FLOWCONTROL_CTS	USART_CR3_CTSE
 
+#define DMA_CHANNEL_0 		0X0000
+
 void joystickADCSetup(void);
 void uartDMASetup(void);
 
 void delay_ms(uint32_t time);
 void commandReset(char* cmd);
 void UART_sendMessage(const char* msg, uint8_t msgLen);
-char* intToStr(uint16_t number);
+void intToStr(uint16_t number, char* container, size_t strSize);

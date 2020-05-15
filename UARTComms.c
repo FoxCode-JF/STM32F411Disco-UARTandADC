@@ -1,23 +1,35 @@
+/**********TODO*********/
+/*
+ * Read value from another axis of joystick
+ * Trigger ADC read with timer
+ * Refactor
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
+#include <malloc.h>
 
 #include "UARTComms.h"
 #include "stm32f4xx_user_utils.h"
 
 uint8_t buffer[MAX_CMD_SIZE];
 uint8_t command[MAX_CMD_SIZE];
-uint8_t DMA_TX_Buffer[DMA_TX_BUFFER_SIZE] = "Welcome to Fox UART communication test program\n";
+uint8_t DMA_TX_Buffer[DMA_TX_BUFFER_SIZE];
+uint8_t adcStr[4];
+
+const char welcomeMsg[48] = "Welcome to Fox UART communication test program\n";
+
 
 volatile uint32_t commandIT = 0;
 static uint32_t ms_count = 0; //  variable used by function delay_ms(uint32_t time)
 volatile uint16_t txMessageCalcLen =0;
 
-volatile uint16_t xCordJoyRead = 0;
-volatile uint16_t yCordJoyRead = 0;
+volatile uint16_t joyAxisRead[2] = {0, 0};
 
 bool isXChannelRead = false, isYChannelRead = false;
+
 
 
 int main(void)
@@ -60,12 +72,13 @@ int main(void)
 	NVIC_EnableIRQ(EXTI0_IRQn);
 	NVIC_EnableIRQ(EXTI2_IRQn);
 	NVIC_EnableIRQ(USART1_IRQn); 
-	NVIC_EnableIRQ(ADC_IRQn);
 	
 	NVIC_EnableIRQ(DMA2_Stream5_IRQn);
 	NVIC_EnableIRQ(DMA2_Stream7_IRQn);
 
 	ADC1->CR2 		|= ADC_CR2_SWSTART; 	// Start conversion
+
+	UART_sendMessage(welcomeMsg, 48);
 
 	while(1)
 	{
@@ -75,8 +88,7 @@ int main(void)
 			for (int i = 0; i < 10; ++i)
 			{
 				BB(GPIOD->ODR, PD15) ^= 1;
-				delay_ms(150);
-				UART_sendMessage("I'M BLUE\n", 9);	
+				delay_ms(150);	
 			}
 			commandReset(command);
 			
@@ -87,38 +99,46 @@ int main(void)
 			{
 				BB(GPIOD->ODR, PD12) ^= 1;
 				delay_ms(150);
-				UART_sendMessage("I'M YELLOW\n", 11);	
 			}
 			commandReset(command);
 		}
+		else if (strncmp(command, "blink orange\r", 13) == 0)
+		{
+
+			for (int i = 0; i < 10; ++i)
+			{
+				BB(GPIOD->ODR, PD13) ^= 1;
+				delay_ms(150);	
+			}
+			commandReset(command);
+			
+		}
+		else if (strncmp(command, "blink red\r", 10) == 0)
+		{
+			for (int i = 0; i < 10; ++i)
+			{
+				BB(GPIOD->ODR, PD14) ^= 1;
+				delay_ms(150);
+			}
+			commandReset(command);
+		}
+
+		/* Display joystick adc values */
+		intToStr(joyAxisRead[0], adcStr, DECIMAL_DIGITS_NUM_12b);
+		UART_sendMessage("joyAxisRead[0]: ", 16);
+		UART_sendMessage(adcStr, DECIMAL_DIGITS_NUM_12b);
+		UART_sendMessage(" ", 1);
+		intToStr(joyAxisRead[1], adcStr, DECIMAL_DIGITS_NUM_12b);
+		UART_sendMessage("joyAxisRead[1]: ", 16);
+		UART_sendMessage(adcStr, DECIMAL_DIGITS_NUM_12b);
+		UART_sendMessage("\n", 1);
+		delay_ms(100);
 	}
+
+		
 	return 0;
 }
 
-void ADC_IRQHandler(void)
-{
-
-	if (ADC1->SR & ADC_SR_EOC)
-	{
-		ADC1->SR &= ~ADC_SR_EOC;
-		xCordJoyRead = ADC1->DR;
-		/*char* testStr = intToStr(xCordJoyRead);
-		UART_sendMessage(testStr, 4);*/
-		BB(GPIOD->ODR, PD15) = 1;
-		/*if (!isXChannelRead)
-		{
-			xCordJoyRead = ADC1->DR;
-			isXChannelRead = true;
-			isYChannelRead = false;
-		}
-		else if(!isYChannelRead)
-		{
-			yCordJoyRead = ADC1->DR;
-			isXChannelRead = false;
-			isYChannelRead = true;
-		}*/
-	}
-}
 void USART1_IRQHandler(void)
 {
 	if(USART1->SR & USART_SR_IDLE)
@@ -212,20 +232,15 @@ void UART_sendMessage(const char* msg, uint8_t msgLen)
 	DMA2_Stream7->CR |=	DMA_SxCR_EN;
 }
 
-char* intToStr(uint16_t number)
+void intToStr(uint16_t number, char* container, size_t strSize)
 {
-	uint8_t i = 0;
-	uint16_t tmp = number;
-	char result[DECIMAL_DIGITS_NUM_12b];
+	int  tmp = number;
 
-	//result = (char*)malloc(DECIMAL_DIGITS_NUM_12b * sizeof(char));
-
-	while(tmp)
+	for (int i = strSize - 1; i < strSize; --i)
 	{
-		result[i++] = tmp % 10 + '0';
+		container[i] = tmp % 10 + '0';
 		tmp /= 10;
 	}
-	return result;
 }
 
 void delay_ms(uint32_t time)
@@ -288,7 +303,8 @@ void uartDMASetup(void)
 	 */
 	
 	DMA2_Stream7->CR 	= DMA_SxCR_CHSEL_2 	| 	// select channel 4
-						  DMA_SxCR_PL_1		| 	// Priority level medium
+						  DMA_SxCR_PL_0		|
+						  DMA_SxCR_PL_1 	| 	// Priority level medium
 						  DMA_SxCR_MINC 	| 	// Memory increment mode
 						  DMA_SxCR_DIR_0 	|
 						  DMA_SxCR_TCIE 	; 	// Transfer Complete Interrupt Enable
@@ -301,7 +317,8 @@ void uartDMASetup(void)
 	 */
 						  
 	DMA2_Stream5->CR 	= DMA_SxCR_CHSEL_2 	|	// select channel 4
-						  DMA_SxCR_PL_1		| 	// Priority level medium
+						  DMA_SxCR_PL_0		|
+						  DMA_SxCR_PL_1 	| 	// Priority level medium
 						  DMA_SxCR_TCIE 	; 	// Transfer Complete Interrupt Enable
 
 	DMA2_Stream5->PAR 		= (uint32_t)&USART1->DR;
@@ -310,29 +327,56 @@ void uartDMASetup(void)
 	DMA2_Stream5->CR 		|=	DMA_SxCR_EN;
 
 	DMA2_Stream7->M0AR		= 	(uint32_t)DMA_TX_Buffer;
-	DMA2_Stream7->NDTR		|= 	48;	
-	DMA2_Stream7->CR 		|=	DMA_SxCR_EN;
 }
 
 void joystickADCSetup(void)
 {
+	/*Enable DMA*/
+	RCC->AHB1ENR 	|= RCC_AHB1ENR_DMA2EN;
 	/*Clock enable*/
 	GPIO_Init(GPIOC, ENABLE);
 	RCC->APB2ENR 	|= RCC_APB2ENR_ADC1EN;
 	__DSB();
 
+	/*Configure triggering by timer*/
+	//RCC->APB1ENR 	|= RCC_APB1ENR_TIM2EN;
+
+	/*************Configure DMA Controller*************/
+
+	/*Transmission stream config (ADC1)
+	 *
+	 *	DMA2, Channel 0, Stream 0
+	 */
+	
+	DMA2_Stream0->CR 	= DMA_CHANNEL_0		| 	// select channel 0
+						  DMA_SxCR_PL_1		| 	// Priority level medium
+						  DMA_SxCR_MINC 	| 	// Memory increment mode
+						  DMA_SxCR_CIRC 	| 	// Circular buffer mode
+						  DMA_SxCR_PSIZE_0 	|   // Peripheral memory size = 16b 
+						  DMA_SxCR_MSIZE_0 	| 	// Data memory size = 16b	
+						  DMA_SxCR_TCIE 	; 	// Transfer Complete Interrupt Enable
+
+	DMA2_Stream0->PAR 	= (uint32_t)&ADC1->DR;
+
+	DMA2_Stream0->M0AR		= 	(uint32_t)joyAxisRead ;
+	DMA2_Stream0->NDTR		|= 	2;
+	DMA2_Stream0->CR 		|=	DMA_SxCR_EN;
+
 	/*Configure pins for user pushbutton and XY axes data*/
-	GPIO_PinCfg(GPIOE, PE1, gpio_mode_in_PU);
+	GPIO_PinCfg(GPIOE, PE2, gpio_mode_in_PU);https://www.google.com/search?q=ADC+continuous+mode+scan&ie=utf-8&oe=utf-8&client=firefox-b-e
 	GPIO_PinCfg(GPIOC, PC1, gpio_mode_analog);
 	GPIO_PinCfg(GPIOC, PC0, gpio_mode_analog);
 
 	//ADC->CCR 		= ADC_CCR_ADCPRE;	// ADC Clk freq set to PLCK2/8
-	ADC1->CR1 		= /*ADC_CR1_SCAN | */	// convert inputs set in ADC_SQRx
-					  ADC_CR1_EOCIE;	// EOC interrupt enable
-	ADC1->CR2 		= ADC_CR2_CONT ;/*|	// Continous measurement
-					  ADC_CR2_EOCS;*/		// End Of Conversion bit set after each regular conversion
-	//ADC1->SQR1 		|= ADC_SQR1_L_0;	// Use two channels
-	ADC1->SQR3 		= 10 /*| 11 << 5*/;		// Scan channel 10 and 11
-	ADC1->CR2 		|= ADC_CR2_ADON;	// A/D converter on
+	ADC1->CR1 		= ADC_CR1_SCAN; 	// convert inputs set in ADC_SQRx
+
+	ADC1->CR2 		= ADC_CR2_DDS  | 	//
+					  ADC_CR2_DMA;  /*|	// DMA mode
+					  ADC_CR2_EOCS;		*/// End Of Conversion bit set after each regular conversion
+	ADC1->SQR1 		|= ADC_SQR1_L_0;	// Perform 2 conversions
+	ADC1->SQR3 		= 10 | 11 << 5;		// Scan channel 10 and 11
+	ADC1->SMPR1 	|= ADC_SMPR1_SMP10 | ADC_SMPR1_SMP11; // choosing sampling rate
+	ADC1->CR2 		|= ADC_CR2_ADON | ADC_CR2_CONT;	// Continous measurement;	// A/D converter on
+	
 	delay_ms(1000);
 }
